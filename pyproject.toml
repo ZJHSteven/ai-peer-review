@@ -1,0 +1,31 @@
+[project]
+name = "ai-peer-review"
+version = "0.1.0"
+description = "AI-based peer review of academic papers"
+readme = "README.md"
+authors = [
+    { name = "Russell Poldrack", email = "poldrack@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "click",
+    "pydantic",
+    "requests",
+    "pypdf",
+    "openai",
+    "anthropic",
+    "google-generativeai",
+    "tiktoken",
+    "tqdm",
+    "pytest>=8.3.5",
+    "python-dotenv",
+    "structlog",
+    "pandas",
+]
+
+[project.scripts]
+ai-peer-review = "ai_peer_review.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
