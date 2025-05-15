@@ -2,6 +2,8 @@
 
 This package facilitates AI-based peer review of academic papers, particularly in neuroscience. It uses multiple large language models (LLMs) to generate independent reviews of a paper, and then creates a meta-review summarizing the key points.
 
+NOTE: All code in this project was AI-generated using Claude Code.
+
 ## Features
 
 - Submit papers for review by multiple LLMs
