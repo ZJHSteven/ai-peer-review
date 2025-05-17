@@ -4,23 +4,34 @@ import json
 import re
 from pathlib import Path
 from .review import process_paper, generate_meta_review
-from .utils.config import get_api_key, set_api_key
+from .utils.config import get_api_key, set_api_key, get_prompt
 from .version import __version__
 
 
 @click.group()
 @click.version_option(version=__version__)
-def cli():
+@click.option(
+    "--config-file",
+    type=click.Path(exists=False),
+    help="Path to a custom configuration file",
+    envvar="AI_PEER_REVIEW_CONFIG_FILE"
+)
+@click.pass_context
+def cli(ctx, config_file):
     """AI-based peer review of academic papers."""
-    pass
+    # Store config path in context for subcommands to access
+    ctx.ensure_object(dict)
+    ctx.obj["config_file"] = config_file
 
 
 @cli.command()
 @click.argument("service", type=click.Choice(["openai", "anthropic", "google", "together"]))
 @click.argument("api_key", type=str)
-def config(service, api_key):
+@click.pass_context
+def config(ctx, service, api_key):
     """Set API key for a service."""
-    set_api_key(service, api_key)
+    config_file = ctx.obj.get("config_file")
+    set_api_key(service, api_key, config_file)
     click.echo(f"API key for {service} has been set successfully.")
 
 
@@ -71,7 +82,8 @@ def get_available_models():
     default=False,
     help="Overwrite existing reviews",
 )
-def review(pdf_path, output_dir, meta_review, models, overwrite):
+@click.pass_context
+def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
     """Process a paper and generate peer reviews using multiple LLMs."""
     # Use the input file's stem (filename without extension) as the output directory
     pdf_path = Path(pdf_path)
@@ -115,7 +127,8 @@ def review(pdf_path, output_dir, meta_review, models, overwrite):
     # Process papers with LLMs for missing or to-be-overwritten reviews
     if models_to_process:
         click.echo(f"Processing models: {', '.join(models_to_process)}")
-        new_reviews = process_paper(pdf_path, models_to_process)
+        config_file = ctx.obj.get("config_file")
+        new_reviews = process_paper(pdf_path, models_to_process, config_file)
         
         # Save new reviews
         for model, review_text in new_reviews.items():
@@ -132,7 +145,8 @@ def review(pdf_path, output_dir, meta_review, models, overwrite):
     # Generate meta-review if requested
     if meta_review:
         click.echo("Generating meta-review...")
-        meta_review_text, nato_to_model = generate_meta_review(reviews)
+        config_file = ctx.obj.get("config_file")
+        meta_review_text, nato_to_model = generate_meta_review(reviews, config_file)
         
         # Get the full meta-review text before cleaning for table extraction
         from .review import save_concerns_as_csv
@@ -144,39 +158,57 @@ def review(pdf_path, output_dir, meta_review, models, overwrite):
         
         # Extract concerns table and save as CSV with model names as columns
         from .review import GoogleClient
-        meta_reviewer = GoogleClient(model="gemini-2.5-pro")
+        meta_reviewer = GoogleClient(model="gemini-2.5-pro-preview-05-06")
         
         # Create reverse mapping from NATO code to model name
         model_names = list(reviews.keys())
         reviewer_codes = list(nato_to_model.keys())
         
-        # Create prompt that directly requests model names as columns
-        prompt = (
-            "Based on the meta-review, extract all major concerns identified by reviewers.\n\n"
-            "Create a JSON object with a 'concerns' array. Each concern object should have:\n"
-            "1. A 'concern' field with a brief description\n"
-            f"2. One field for each model: {', '.join(model_names)}\n"
-            "3. Each model field should be true if that model identified the concern, false otherwise\n\n"
-            "Example structure:\n"
-            "{\n"
-            "  \"concerns\": [\n"
-            "    {\n"
-            "      \"concern\": \"Brief description of concern 1\",\n"
-            f"      \"{model_names[0]}\": true,\n"
-            f"      \"{model_names[1]}\": false,\n"
-            "      ...\n"
-            "    },\n"
-            "    ...\n"
-            "  ]\n"
-            "}\n\n"
-            "Return only valid JSON without any explanation.\n\n"
-            f"Meta-review:\n{meta_review_text}\n\n"
-            f"Model name mapping (for reference):\n"
-        )
+        # Get custom config path if provided
+        config_file = ctx.obj.get("config_file")
         
-        # Add mapping information to help the model translate from NATO codes to model names
+        # Get concerns extraction prompt from config
+        prompt_template = get_prompt("concerns_extraction", config_file)
+        if not prompt_template:
+            # Fallback to hardcoded prompt if not found in config
+            prompt_template = (
+                "Based on the meta-review, extract all major concerns identified by reviewers.\n\n"
+                "Create a JSON object with a 'concerns' array. Each concern object should have:\n"
+                "1. A 'concern' field with a brief description\n"
+                "2. One field for each model: {model_names}\n"
+                "3. Each model field should be true if that model identified the concern, false otherwise\n\n"
+                "Example structure:\n"
+                "{{\n"
+                "  \"concerns\": [\n"
+                "    {{\n"
+                "      \"concern\": \"Brief description of concern 1\",\n"
+                "      \"{first_model}\": true,\n"
+                "      \"{second_model}\": false,\n"
+                "      ...\n"
+                "    }},\n"
+                "    ...\n"
+                "  ]\n"
+                "}}\n\n"
+                "Return only valid JSON without any explanation.\n\n"
+                "Meta-review:\n{meta_review_text}\n\n"
+                "Model name mapping (for reference):\n{model_mapping}"
+            )
+        
+        # Format the model names and mapping
+        model_names_str = ', '.join(model_names)
+        first_model = model_names[0] if model_names else ""
+        second_model = model_names[1] if len(model_names) > 1 else ""
+        model_mapping = ""
         for nato_code, model_name in nato_to_model.items():
-            prompt += f"{nato_code}: {model_name}\n"
+            model_mapping += f"{nato_code}: {model_name}\n"
+        
+        prompt = prompt_template.format(
+            model_names=model_names_str,
+            first_model=first_model,
+            second_model=second_model,
+            meta_review_text=meta_review_text,
+            model_mapping=model_mapping
+        )
         
         json_text = meta_reviewer.generate(prompt)
         # Extract JSON from response

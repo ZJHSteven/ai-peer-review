@@ -4,7 +4,7 @@ import requests
 import json
 
 from .base_client import BaseLLMClient
-from ..utils.config import get_api_key
+from ..utils.config import get_api_key, get_prompt
 
 
 class DeepSeekClient(BaseLLMClient):
@@ -39,10 +39,15 @@ class DeepSeekClient(BaseLLMClient):
         Returns:
             Generated response
         """
+        # Get system prompt from config
+        system_prompt = get_prompt("system")
+        if not system_prompt:
+            system_prompt = "You are a neuroscientist and expert in brain imaging."
+            
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": "You are a neuroscientist and expert in brain imaging."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.1,

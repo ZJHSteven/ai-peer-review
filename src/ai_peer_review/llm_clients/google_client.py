@@ -3,7 +3,7 @@ from typing import Optional
 import google.generativeai as genai
 
 from .base_client import BaseLLMClient
-from ..utils.config import get_api_key
+from ..utils.config import get_api_key, get_prompt
 
 
 class GoogleClient(BaseLLMClient):
@@ -35,7 +35,10 @@ class GoogleClient(BaseLLMClient):
         Returns:
             Generated response
         """
-        system_instruction = "You are a neuroscientist and expert in brain imaging."
+        # Get system prompt from config
+        system_instruction = get_prompt("system")
+        if not system_instruction:
+            system_instruction = "You are a neuroscientist and expert in brain imaging."
         
         response = self.model_obj.generate_content(
             [system_instruction, prompt],

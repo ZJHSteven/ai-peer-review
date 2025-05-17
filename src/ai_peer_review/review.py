@@ -7,6 +7,7 @@ import random
 import pandas as pd
 
 from .utils.pdf import extract_text_from_pdf
+from .utils.config import get_prompt
 from .llm_clients.openai_client import OpenAIClient
 from .llm_clients.anthropic_client import AnthropicClient
 from .llm_clients.google_client import GoogleClient
@@ -14,70 +15,109 @@ from .llm_clients.deepseek_client import DeepSeekClient
 from .llm_clients.llama_client import LlamaClient
 
 
-def get_review_prompt(paper_text: str) -> str:
-    """Generate the prompt for peer review."""
-    prompt = (
-        "You are a neuroscientist and expert in brain imaging who has been asked to provide "
-        "a peer review for a submitted research paper, which is attached here. "
-        "Please provide a thorough and critical review of the paper. "
-        "First provide a summary of the study and its results, and then provide "
-        "a detailed point-by-point analysis of any flaws in the study.\n\n"
-        f"Here is the paper to review:\n\n{paper_text}"
-    )
-    return prompt
+def get_review_prompt(paper_text: str, config_file: Optional[str] = None) -> str:
+    """
+    Generate the prompt for peer review.
+    
+    Args:
+        paper_text: The text of the paper to review
+        config_file: Optional path to a custom config file
+    
+    Returns:
+        The formatted prompt string
+    """
+    prompt_template = get_prompt("review", config_file)
+    if not prompt_template:
+        # Fallback to hardcoded prompt if not found in config
+        prompt_template = (
+            "You are a neuroscientist and expert in brain imaging who has been asked to provide "
+            "a peer review for a submitted research paper, which is attached here. "
+            "Please provide a thorough and critical review of the paper. "
+            "First provide a summary of the study and its results, and then provide "
+            "a detailed point-by-point analysis of any flaws in the study.\n\n"
+            "Here is the paper to review:\n\n{paper_text}"
+        )
+    
+    return prompt_template.format(paper_text=paper_text)
 
 
-def get_metareview_prompt(reviews: List[str]) -> str:
-    """Generate the prompt for meta-review."""
+def get_metareview_prompt(reviews: List[str], config_file: Optional[str] = None) -> str:
+    """
+    Generate the prompt for meta-review.
+    
+    Args:
+        reviews: List of review texts
+        config_file: Optional path to a custom config file
+        
+    Returns:
+        The formatted meta-review prompt
+    """
     # NATO phonetic alphabet for reviewers
     nato_names = ["alfa", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet"]
     
-    prompt = (
-        "The attached files contain peer reviews of a research article. "
-        "Please summarize these into a meta-review, highlighting both the common points "
-        "raised across reviewers as well as any specific concerns that were only raised "
-        "by some reviewers. In your meta-review, identify all major concerns raised by any reviewer. "
-        "After your meta-review, include a section titled 'CONCERNS_TABLE_DATA' where you provide a JSON object "
-        "representing a table of concerns. Each row should be a distinct concern, with columns for each reviewer. "
-        "Use the following format: \n\n"
-        "```json\n"
-        "{\n"
-        "  \"concerns\": [\n"
-        "    {\n"
-        "      \"concern\": \"Brief description of concern 1\",\n"
-        "      \"alfa\": true/false,\n"
-        "      \"bravo\": true/false,\n"
-        "      ...\n"
-        "    },\n"
-        "    ...\n"
-        "  ]\n"
-        "}\n"
-        "```\n\n"
-        "Refer to each of the reviewers using their assigned NATO phonetic alphabet name "
-        "(e.g., alfa, bravo, charlie) throughout your meta-review.\n\n"
-    )
-    
+    # Build reviews text with NATO phonetic names
+    reviews_text = ""
     for i, review in enumerate(reviews):
         reviewer_name = nato_names[i] if i < len(nato_names) else f"reviewer_{i+1}"
-        prompt += f"Review from {reviewer_name}:\n\n{review}\n\n"
+        reviews_text += f"Review from {reviewer_name}:\n\n{review}\n\n"
     
-    return prompt
+    # Get prompt template from config
+    prompt_template = get_prompt("metareview", config_file)
+    if not prompt_template:
+        # Fallback to hardcoded prompt if not found in config
+        prompt_template = (
+            "The attached files contain peer reviews of a research article. "
+            "Please summarize these into a meta-review, highlighting both the common points "
+            "raised across reviewers as well as any specific concerns that were only raised "
+            "by some reviewers. In your meta-review, identify all major concerns raised by any reviewer. "
+            "After your meta-review, include a section titled 'CONCERNS_TABLE_DATA' where you provide a JSON object "
+            "representing a table of concerns. Each row should be a distinct concern, with columns for each reviewer. "
+            "Use the following format: \n\n"
+            "```json\n"
+            "{{\n"
+            "  \"concerns\": [\n"
+            "    {{\n"
+            "      \"concern\": \"Brief description of concern 1\",\n"
+            "      \"alfa\": true/false,\n"
+            "      \"bravo\": true/false,\n"
+            "      ...\n"
+            "    }},\n"
+            "    ...\n"
+            "  ]\n"
+            "}}\n"
+            "```\n\n"
+            "Refer to each of the reviewers using their assigned NATO phonetic alphabet name "
+            "(e.g., alfa, bravo, charlie) throughout your meta-review.\n\n"
+            "{reviews_text}"
+        )
+    
+    return prompt_template.format(reviews_text=reviews_text)
 
 
-def process_paper(pdf_path: str, models: List[str]) -> Dict[str, str]:
-    """Process a paper and generate reviews using multiple LLMs."""
+def process_paper(pdf_path: str, models: List[str], config_file: Optional[str] = None) -> Dict[str, str]:
+    """
+    Process a paper and generate reviews using multiple LLMs.
+    
+    Args:
+        pdf_path: Path to the PDF file to process
+        models: List of model names to use for reviews
+        config_file: Optional path to a custom config file
+        
+    Returns:
+        Dictionary mapping model names to their review texts
+    """
     # Extract text from PDF
     paper_text = extract_text_from_pdf(pdf_path)
     
     # Generate the review prompt
-    prompt = get_review_prompt(paper_text)
+    prompt = get_review_prompt(paper_text, config_file)
     
     # Define client factories for each model
     client_factories = {
         "gpt4-o1": lambda: OpenAIClient(model="gpt-4o"),
         "gpt4-o3-mini": lambda: OpenAIClient(model="gpt-4o-mini"),
-        "claude-3.7-sonnet": lambda: AnthropicClient(model="claude-3-7-sonnet-20240229"),
-        "gemini-2.5-pro": lambda: GoogleClient(model="gemini-2.5-pro"),
+        "claude-3.7-sonnet": lambda: AnthropicClient(model="claude-3-sonnet-20240229"),
+        "gemini-2.5-pro": lambda: GoogleClient(model="gemini-2.5-pro-preview-05-06"),
         "deepseek-r1": lambda: DeepSeekClient(model="deepseek-r1"),
         "llama-4-maverick": lambda: LlamaClient(model="llama-4-maverick")
     }
@@ -121,8 +161,17 @@ def extract_concerns_table(meta_review_text: str) -> Optional[Dict]:
     return None
 
 
-def generate_meta_review(reviews: Dict[str, str]) -> Tuple[str, Dict[str, str]]:
-    """Generate a meta-review of all reviews."""
+def generate_meta_review(reviews: Dict[str, str], config_file: Optional[str] = None) -> Tuple[str, Dict[str, str]]:
+    """
+    Generate a meta-review of all reviews.
+    
+    Args:
+        reviews: Dictionary mapping model names to their review texts
+        config_file: Optional path to a custom config file
+        
+    Returns:
+        Tuple of (meta-review text, NATO-to-model mapping)
+    """
     # NATO phonetic alphabet for reviewers
     nato_names = ["alfa", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet"]
     
@@ -139,10 +188,10 @@ def generate_meta_review(reviews: Dict[str, str]) -> Tuple[str, Dict[str, str]]:
         nato_to_model[f"reviewer_{i+1}"] = model
     
     # Generate meta-review prompt
-    prompt = get_metareview_prompt(anonymized_reviews)
+    prompt = get_metareview_prompt(anonymized_reviews, config_file)
     
     # Use Google Gemini for meta-review
-    meta_reviewer = GoogleClient(model="gemini-2.5-pro")
+    meta_reviewer = GoogleClient(model="gemini-2.5-pro-preview-05-06")
     meta_review_text = meta_reviewer.generate(prompt)
     
     # Filter out the CONCERNS_TABLE_DATA section from the meta-review

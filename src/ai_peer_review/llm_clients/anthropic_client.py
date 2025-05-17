@@ -3,7 +3,7 @@ from typing import Optional
 from anthropic import Anthropic
 
 from .base_client import BaseLLMClient
-from ..utils.config import get_api_key
+from ..utils.config import get_api_key, get_prompt
 
 
 class AnthropicClient(BaseLLMClient):
@@ -34,9 +34,14 @@ class AnthropicClient(BaseLLMClient):
         Returns:
             Generated response
         """
+        # Get system prompt from config
+        system_prompt = get_prompt("system")
+        if not system_prompt:
+            system_prompt = "You are a neuroscientist and expert in brain imaging."
+            
         response = self.client.messages.create(
             model=self.model,
-            system="You are a neuroscientist and expert in brain imaging.",
+            system=system_prompt,
             max_tokens=4000,
             temperature=0.1,
             messages=[

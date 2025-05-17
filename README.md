@@ -102,6 +102,72 @@ Skip meta-review generation:
 ai-peer-review review path/to/paper.pdf --no-meta-review
 ```
 
+Use a custom configuration file:
+
+```bash
+ai-peer-review --config-file /path/to/custom/config.json review path/to/paper.pdf
+```
+
+## Prompts and Configuration
+
+The tool uses specific prompts for generating peer reviews and meta-reviews:
+
+### Review Prompt
+
+By default, papers are submitted to LLMs with the following prompt:
+
+```
+You are a neuroscientist and expert in brain imaging who has been asked to provide 
+a peer review for a submitted research paper, which is attached here. Please provide 
+a thorough and critical review of the paper. First provide a summary of the study 
+and its results, and then provide a detailed point-by-point analysis of any flaws in the study.
+```
+
+### Meta-Review Prompt
+
+The meta-review is generated using the following prompt:
+
+```
+The attached files contain peer reviews of a research article. Please summarize 
+these into a meta-review, highlighting both the common points raised across reviewers 
+as well as any specific concerns that were only raised by some reviewers. Then rank 
+the reviews in terms of their usefulness and identification of critical issues.
+```
+
+When generating the meta-review, all model identifiers are removed from the individual reviews to prevent bias.
+
+### Customizing Prompts
+
+You can customize the prompts used by the tool by editing the configuration file:
+
+1. Locate or create the configuration file at `~/.ai-peer-review/config.json`
+2. Add or modify the `prompts` section:
+
+```json
+{
+  "api_keys": {
+    ...
+  },
+  "prompts": {
+    "system": "Your custom system prompt",
+    "review": "Your custom review prompt. Include the {paper_text} placeholder where the paper text should be inserted.",
+    "metareview": "Your custom meta-review prompt. Include the {reviews_text} placeholder where the reviews should be inserted."
+  }
+}
+```
+
+The configuration file will be created automatically with default prompts if it doesn't exist. You can modify it to suit your needs.
+
+### Using a Custom Configuration File
+
+You can specify a custom configuration file path using the `--config-file` option:
+
+```bash
+ai-peer-review --config-file /path/to/custom/config.json review path/to/paper.pdf
+```
+
+This allows you to maintain multiple configuration files for different purposes or environments. The custom config file will be used for all operations in that command session, including loading prompts and API keys.
+
 ## Outputs
 
 The tool generates the following outputs in the specified directory (default: `./papers/[paper-name]`):
