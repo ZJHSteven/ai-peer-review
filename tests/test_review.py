@@ -67,7 +67,7 @@ class TestReview:
         mock_openai.assert_called_once_with(model="gpt-4o")
         
         # Check that the Anthropic client was initialized with the correct model
-        mock_anthropic.assert_called_once_with(model="claude-3-7-sonnet-20240229")
+        mock_anthropic.assert_called_once_with(model="claude-3-sonnet-20240229")
         
         # Check that the generate methods were called
         mock_openai_instance.generate.assert_called_once()
@@ -98,7 +98,7 @@ class TestReview:
         meta_review, ratings = generate_meta_review(reviews)
         
         # Check that the Google client was initialized with the correct model
-        mock_google.assert_called_once_with(model="gemini-2.5-pro")
+        mock_google.assert_called_once_with(model="gemini-2.5-pro-preview-05-06")
         
         # Check that the generate method was called
         mock_google_instance.generate.assert_called_once()

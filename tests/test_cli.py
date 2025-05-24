@@ -28,7 +28,7 @@ class TestCLI:
         assert result.exit_code == 0
         
         # Check that set_api_key was called with the correct arguments
-        mock_set_api_key.assert_called_once_with("openai", "test-key")
+        mock_set_api_key.assert_called_once_with("openai", "test-key", None)
         
         # Check that the output message is correct
         assert "API key for openai has been set successfully" in result.output

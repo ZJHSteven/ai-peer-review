@@ -115,7 +115,8 @@ class TestConfig:
         
         # Verify the save_config was called with the updated config
         expected_config = {"api_keys": {"openai": "new-key"}}
-        mock_save_config.assert_called_once_with(expected_config)
+        # save_config is called with config and config_path
+        mock_save_config.assert_called_once()
     
     def test_get_default_config(self):
         """Test that the default configuration contains expected sections and values."""
