@@ -6,6 +6,12 @@ from ai_peer_review.utils.pdf import extract_text_from_pdf
 
 
 class TestPDF:
+    def setup_method(self):
+        """Ensure test_data directory exists before each test."""
+        test_dir = Path(__file__).parent
+        test_data_dir = test_dir / "test_data"
+        test_data_dir.mkdir(exist_ok=True)
+    
     def test_extract_text_from_pdf(self):
         # Get the path to the test PDF
         test_dir = Path(__file__).parent
