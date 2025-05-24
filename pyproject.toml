@@ -21,6 +21,7 @@ dependencies = [
     "python-dotenv",
     "structlog",
     "pandas",
+    "ipykernel>=6.29.5",
 ]
 
 [project.scripts]
