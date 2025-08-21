@@ -55,7 +55,13 @@ def get_available_models():
         "claude-3.7-sonnet",
         "gemini-2.5-pro",
         "deepseek-r1",
-        "llama-4-maverick"
+        "llama-4-maverick",
+        # 新增的模型
+        "gpt-5-2025-08-07",
+        "o3-2025-04-16",
+        "claude-3-7-sonnet-20250219-thinking",
+        "qwen3-235b-a22b-think",
+        "doubao-seed-1-6-thinking-250615"
     ]
 
 
@@ -98,9 +104,15 @@ def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
     selected_models = available_models
     if models:
         model_list = [m.strip() for m in models.split(",")]
-        selected_models = [m for m in model_list if m in available_models]
+        # 更宽松的模型验证：允许任何指定的模型，同时给出友好提示
+        selected_models = model_list
+        unknown_models = [m for m in model_list if m not in available_models]
+        if unknown_models:
+            click.echo(f"Warning: Using non-standard models: {', '.join(unknown_models)}")
+            click.echo(f"Standard models are: {', '.join(available_models)}")
+        
         if not selected_models:
-            click.echo(f"No valid models specified. Available models: {', '.join(available_models)}")
+            click.echo(f"No models specified. Available models: {', '.join(available_models)}")
             return
     
     click.echo(f"Processing paper: {pdf_path}")
@@ -116,7 +128,7 @@ def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
         
         if review_file.exists() and not overwrite:
             # Read existing review
-            with open(review_file, "r") as f:
+            with open(review_file, "r", encoding="utf-8") as f:
                 review_text = f.read()
             reviews[model_name] = review_text
             review_data[model_name] = review_text
@@ -133,7 +145,7 @@ def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
         # Save new reviews
         for model, review_text in new_reviews.items():
             review_file = output_dir / f"review_{model}.md"
-            with open(review_file, "w") as f:
+            with open(review_file, "w", encoding="utf-8") as f:
                 f.write(review_text)
             reviews[model] = review_text
             review_data[model] = review_text
@@ -152,12 +164,12 @@ def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
         from .review import save_concerns_as_csv
         
         meta_review_file = output_dir / "meta_review.md"
-        with open(meta_review_file, "w") as f:
+        with open(meta_review_file, "w", encoding="utf-8") as f:
             f.write(meta_review_text)
         click.echo(f"Meta-review saved to {meta_review_file}")
         
         # Extract concerns table and save as CSV with model names as columns
-        from .review import GoogleClient
+        from .llm_clients.google_client import GoogleClient
         meta_reviewer = GoogleClient(model="gemini-2.5-pro")
         
         # Create reverse mapping from NATO code to model name
@@ -241,8 +253,8 @@ def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
         }
         
         json_file = output_dir / "results.json"
-        with open(json_file, "w") as f:
-            json.dump(result, f, indent=2)
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
         click.echo(f"All results saved to {json_file}")
     
     return reviews

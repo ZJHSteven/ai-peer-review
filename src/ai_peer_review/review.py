@@ -161,12 +161,26 @@ def process_paper(pdf_path: str, models: List[str], config_file: Optional[str] =
     reviews = {}
     for model_name in models:
         try:
+            print(f"Generating review with model: {model_name}")
             # Create a unified client that can handle any model
             client = OpenAIClient(model=model_name)
-            reviews[model_name] = client.generate(prompt)
+            review_text = client.generate(prompt)
+            
+            # 检查生成的内容长度
+            if len(review_text) < 100:
+                print(f"Warning: Review from {model_name} is unusually short ({len(review_text)} characters)")
+            
+            # 检查是否被截断（简单的启发式检查）
+            if not any(keyword in review_text.lower() for keyword in ['结论', '建议', '总结', '最终', '综上']):
+                print(f"Warning: Review from {model_name} may be incomplete (no conclusion keywords found)")
+            
+            reviews[model_name] = review_text
+            print(f"Successfully generated review with {model_name} ({len(review_text)} characters)")
+            
         except Exception as e:
+            error_msg = f"Error: Failed to generate review - {str(e)}"
             print(f"Error generating review with model {model_name}: {e}")
-            reviews[model_name] = f"Error: Failed to generate review - {str(e)}"
+            reviews[model_name] = error_msg
     
     return reviews
 
@@ -229,8 +243,20 @@ def generate_meta_review(reviews: Dict[str, str], config_file: Optional[str] = N
     prompt = get_metareview_prompt(anonymized_reviews, config_file)
     
     # Use a unified client for meta-review (can use any model, defaulting to a good one)
-    meta_reviewer = OpenAIClient(model="gpt-4o")  # You can change this to any model you prefer
-    meta_review_text = meta_reviewer.generate(prompt)
+    try:
+        print("Generating meta-review...")
+        meta_reviewer = OpenAIClient(model="gemini-2.5-pro")  # You can change this to any model you prefer
+        meta_review_text = meta_reviewer.generate(prompt)
+        
+        # 检查meta-review的完整性
+        if len(meta_review_text) < 200:
+            print(f"Warning: Meta-review is unusually short ({len(meta_review_text)} characters)")
+        
+        print(f"Successfully generated meta-review ({len(meta_review_text)} characters)")
+        
+    except Exception as e:
+        print(f"Error generating meta-review: {e}")
+        meta_review_text = f"Error generating meta-review: {str(e)}"
     
     # Filter out the CONCERNS_TABLE_DATA section from the meta-review
     clean_meta_review = re.sub(r'CONCERNS_TABLE_DATA.*', '', meta_review_text, flags=re.DOTALL)
