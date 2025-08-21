@@ -17,25 +17,23 @@ from .llm_clients.llama_client import LlamaClient
 
 def get_review_prompt(paper_text: str, config_file: Optional[str] = None) -> str:
     """
-    Generate the prompt for peer review.
+    生成同行评审的提示词。
     
     Args:
-        paper_text: The text of the paper to review
-        config_file: Optional path to a custom config file
+        paper_text: 待评审论文的文本内容
+        config_file: 可选的自定义配置文件路径
     
     Returns:
-        The formatted prompt string
+        格式化后的提示词字符串
     """
     prompt_template = get_prompt("review", config_file)
     if not prompt_template:
         # Fallback to hardcoded prompt if not found in config
         prompt_template = (
-            "You are a neuroscientist and expert in brain imaging who has been asked to provide "
-            "a peer review for a submitted research paper, which is attached here. "
-            "Please provide a thorough and critical review of the paper. "
-            "First provide a summary of the study and its results, and then provide "
-            "a detailed point-by-point analysis of any flaws in the study.\n\n"
-            "Here is the paper to review:\n\n{paper_text}"
+            "你是一位神经科学家和脑成像领域的专家，应邀对一篇提交的研究论文进行同行评审。"
+            " 请对论文进行全面且批判性的评审。首先简要总结研究及其结果，" 
+            "然后逐条详细分析研究中存在的任何缺陷或问题。\n\n"
+            "待评审论文如下：\n\n{paper_text}"
         )
     
     return prompt_template.format(paper_text=paper_text)
@@ -43,14 +41,14 @@ def get_review_prompt(paper_text: str, config_file: Optional[str] = None) -> str
 
 def get_metareview_prompt(reviews: List[str], config_file: Optional[str] = None) -> str:
     """
-    Generate the prompt for meta-review.
+    生成元评审的提示词。
     
     Args:
-        reviews: List of review texts
-        config_file: Optional path to a custom config file
+        reviews: 评审文本列表
+        config_file: 可选的自定义配置文件路径
         
     Returns:
-        The formatted meta-review prompt
+        格式化后的元评审提示词
     """
     # NATO phonetic alphabet for reviewers
     nato_names = ["alfa", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet"]
@@ -66,18 +64,15 @@ def get_metareview_prompt(reviews: List[str], config_file: Optional[str] = None)
     if not prompt_template:
         # Fallback to hardcoded prompt if not found in config
         prompt_template = (
-            "The attached files contain peer reviews of a research article. "
-            "Please summarize these into a meta-review, highlighting both the common points "
-            "raised across reviewers as well as any specific concerns that were only raised "
-            "by some reviewers. In your meta-review, identify all major concerns raised by any reviewer. "
-            "After your meta-review, include a section titled 'CONCERNS_TABLE_DATA' where you provide a JSON object "
-            "representing a table of concerns. Each row should be a distinct concern, with columns for each reviewer. "
-            "Use the following format: \n\n"
+            "附带文件包含对一篇研究文章的多份同行评审。请将这些评审汇总为一份元评审（meta-review），" 
+            "同时突出各评审者普遍提出的观点以及仅由部分评审者提出的具体担忧。在元评审中，列出任何评审者提出的所有主要问题。" 
+            "完成元评审后，添加一个标题为 'CONCERNS_TABLE_DATA' 的部分，在该部分中提供一个 JSON 对象来表示关注问题的表格。" 
+            "每一行应当表示一个独立的关注点，每一列对应一个评审者。请使用以下格式：\n\n"
             "```json\n"
             "{{\n"
             "  \"concerns\": [\n"
             "    {{\n"
-            "      \"concern\": \"Brief description of concern 1\",\n"
+            "      \"concern\": \"对关注点1的简要描述\",\n"
             "      \"alfa\": true/false,\n"
             "      \"bravo\": true/false,\n"
             "      ...\n"
@@ -86,8 +81,7 @@ def get_metareview_prompt(reviews: List[str], config_file: Optional[str] = None)
             "  ]\n"
             "}}\n"
             "```\n\n"
-            "Refer to each of the reviewers using their assigned NATO phonetic alphabet name "
-            "(e.g., alfa, bravo, charlie) throughout your meta-review.\n\n"
+            "在整份元评审中，请使用分配给评审者的北约音标名称引用他们（例如：alfa、bravo、charlie）。\n\n"
             "{reviews_text}"
         )
     
@@ -96,15 +90,15 @@ def get_metareview_prompt(reviews: List[str], config_file: Optional[str] = None)
 
 def process_paper(pdf_path: str, models: List[str], config_file: Optional[str] = None) -> Dict[str, str]:
     """
-    Process a paper and generate reviews using multiple LLMs.
+    处理论文并使用多个大语言模型生成评审。
     
     Args:
-        pdf_path: Path to the PDF file to process
-        models: List of model names to use for reviews
-        config_file: Optional path to a custom config file
+        pdf_path: PDF文件路径
+        models: 用于评审的模型名称列表
+        config_file: 可选的自定义配置文件路径
         
     Returns:
-        Dictionary mapping model names to their review texts
+        模型名称到评审文本的字典映射
     """
     # Extract text from PDF
     paper_text = extract_text_from_pdf(pdf_path)
@@ -134,7 +128,7 @@ def process_paper(pdf_path: str, models: List[str], config_file: Optional[str] =
 
 
 def extract_concerns_table(meta_review_text: str) -> Optional[Dict]:
-    """Extract the JSON concerns table from the meta-review text."""
+    """从元评审文本中提取JSON格式的关注问题表格。"""
     # Look for JSON data between CONCERNS_TABLE_DATA section and the end of a JSON block
     pattern = r'CONCERNS_TABLE_DATA.*?```json\s*(.*?)\s*```'
     match = re.search(pattern, meta_review_text, re.DOTALL)
@@ -163,14 +157,14 @@ def extract_concerns_table(meta_review_text: str) -> Optional[Dict]:
 
 def generate_meta_review(reviews: Dict[str, str], config_file: Optional[str] = None) -> Tuple[str, Dict[str, str]]:
     """
-    Generate a meta-review of all reviews.
+    生成所有评审的元评审。
     
     Args:
-        reviews: Dictionary mapping model names to their review texts
-        config_file: Optional path to a custom config file
+        reviews: 模型名称到评审文本的字典映射
+        config_file: 可选的自定义配置文件路径
         
     Returns:
-        Tuple of (meta-review text, NATO-to-model mapping)
+        元评审文本和NATO代码到模型名称映射的元组
     """
     # NATO phonetic alphabet for reviewers
     nato_names = ["alfa", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet"]
@@ -201,7 +195,7 @@ def generate_meta_review(reviews: Dict[str, str], config_file: Optional[str] = N
 
 
 def save_concerns_as_csv(meta_review_text: str, output_path: Path) -> bool:
-    """Extract concerns from meta-review and save as CSV."""
+    """从元评审中提取关注问题并保存为CSV格式。"""
     concerns_data = extract_concerns_table(meta_review_text)
     
     if not concerns_data or "concerns" not in concerns_data:
