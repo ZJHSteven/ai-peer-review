@@ -9,10 +9,6 @@ import pandas as pd
 from .utils.pdf import extract_text_from_pdf
 from .utils.config import get_prompt
 from .llm_clients.openai_client import OpenAIClient
-from .llm_clients.anthropic_client import AnthropicClient
-from .llm_clients.google_client import GoogleClient
-from .llm_clients.deepseek_client import DeepSeekClient
-from .llm_clients.llama_client import LlamaClient
 
 
 def get_review_prompt(paper_text: str, config_file: Optional[str] = None) -> str:
@@ -106,23 +102,16 @@ def process_paper(pdf_path: str, models: List[str], config_file: Optional[str] =
     # Generate the review prompt
     prompt = get_review_prompt(paper_text, config_file)
     
-    # Define client factories for each model
-    client_factories = {
-        "gpt4-o1": lambda: OpenAIClient(model="gpt-4o"),
-        "gpt4-o3-mini": lambda: OpenAIClient(model="gpt-4o-mini"),
-        "claude-3.7-sonnet": lambda: AnthropicClient(model="claude-3-sonnet-20240229"),
-        "gemini-2.5-pro": lambda: GoogleClient(model="gemini-2.5-pro-preview-05-06"),
-        "deepseek-r1": lambda: DeepSeekClient(model="deepseek-r1"),
-        "llama-4-maverick": lambda: LlamaClient(model="llama-4-maverick")
-    }
-    
     # Get reviews from each LLM
     reviews = {}
     for model_name in models:
-        if model_name in client_factories:
-            # Only initialize the client if the model is requested
-            client = client_factories[model_name]()
+        try:
+            # Create a unified client that can handle any model
+            client = OpenAIClient(model=model_name)
             reviews[model_name] = client.generate(prompt)
+        except Exception as e:
+            print(f"Error generating review with model {model_name}: {e}")
+            reviews[model_name] = f"Error: Failed to generate review - {str(e)}"
     
     return reviews
 
@@ -184,8 +173,8 @@ def generate_meta_review(reviews: Dict[str, str], config_file: Optional[str] = N
     # Generate meta-review prompt
     prompt = get_metareview_prompt(anonymized_reviews, config_file)
     
-    # Use Google Gemini for meta-review
-    meta_reviewer = GoogleClient(model="gemini-2.5-pro-preview-05-06")
+    # Use a unified client for meta-review (can use any model, defaulting to a good one)
+    meta_reviewer = OpenAIClient(model="gpt-4o")  # You can change this to any model you prefer
     meta_review_text = meta_reviewer.generate(prompt)
     
     # Filter out the CONCERNS_TABLE_DATA section from the meta-review

@@ -1,51 +1,23 @@
 import os
 from typing import Optional
-from openai import OpenAI
 
 from .base_client import BaseLLMClient
-from ..utils.config import get_api_key, get_prompt
 
 
 class OpenAIClient(BaseLLMClient):
-    """Client for OpenAI API."""
+    """Client for OpenAI API using direct JSON requests."""
     
-    def __init__(self, model: str, api_key: Optional[str] = None):
+    def __init__(self, model: str, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """
         Initialize OpenAI client.
         
         Args:
             model: Model name
-            api_key: OpenAI API key (optional, will use OPENAI_API_KEY env var if not provided)
+            api_key: OpenAI API key (optional, will use environment variables if not provided)
+            base_url: Base URL for API (optional, will use environment variables if not provided)
         """
-        self.model = model
-        self.api_key = api_key or get_api_key("openai")
-        if not self.api_key:
-            raise ValueError("OpenAI API key must be provided via the config command, API parameter, or OPENAI_API_KEY environment variable")
-        
-        self.client = OpenAI(api_key=self.api_key)
+        super().__init__(model, api_key, base_url)
     
-    def generate(self, prompt: str) -> str:
-        """
-        Generate response from OpenAI model.
-        
-        Args:
-            prompt: Input prompt
-            
-        Returns:
-            Generated response
-        """
-        # Get system prompt from config
-        system_prompt = get_prompt("system")
-        if not system_prompt:
-            system_prompt = "You are a neuroscientist and expert in brain imaging."
-            
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
-        )
-        
-        return response.choices[0].message.content.strip()
+    def get_model_name(self) -> str:
+        """Get the actual model name to use in API requests."""
+        return self.model
