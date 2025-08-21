@@ -45,7 +45,7 @@ class BaseLLMClient(ABC):
         Returns:
             Generated response
         """
-        system_prompt = "You are a neuroscientist and expert in brain imaging."
+        system_prompt = "您是一位学位与研究生教育领域的资深专家，具有丰富的学术评审经验。"
         
         headers = {
             "Content-Type": "application/json",
