@@ -158,7 +158,7 @@ def review(ctx, pdf_path, output_dir, meta_review, models, overwrite):
         
         # Extract concerns table and save as CSV with model names as columns
         from .review import GoogleClient
-        meta_reviewer = GoogleClient(model="gemini-2.5-pro-preview-05-06")
+        meta_reviewer = GoogleClient(model="gemini-2.5-pro")
         
         # Create reverse mapping from NATO code to model name
         model_names = list(reviews.keys())
