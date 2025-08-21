@@ -1,0 +1,1 @@
+Error: Failed to generate review - API connection failed: HTTPSConnectionPool(host='yunwu.ai', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1028)')))

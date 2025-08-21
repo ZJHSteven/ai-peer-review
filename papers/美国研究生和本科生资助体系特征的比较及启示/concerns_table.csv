@@ -1,0 +1,7 @@
+concern,gpt-5-2025-08-07,o3-2025-04-16,claude-3-7-sonnet-20250219-thinking,gemini-2.5-pro,qwen3-235b-a22b-think,deepseek-r1,doubao-seed-1-6-thinking-250615
+政策启示过于宏观，缺乏具体性和可操作性,False,True,False,True,False,False,True
+研究数据时效性不足，且缺乏动态变化分析,False,True,True,False,False,False,True
+未区分硕士与博士、学术型与专业型研究生，掩盖了群体内部的资助差异,True,False,False,True,False,False,True
+核心论点缺乏深入的理论分析和支撑,False,False,True,False,True,False,False
+部分参考文献格式不规范,True,False,False,False,True,False,False
+摘要过于简略，未能充分概括研究核心内容,False,True,False,False,True,False,False
